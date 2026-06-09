@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviso de Proximidad de Riesgo - Paralert</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; }
+        .container { max-width: 560px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header { background: #f39c12; padding: 32px; text-align: center; }
+        .header.alto { background: #c0392b; }
+        .header-icon { font-size: 56px; margin-bottom: 8px; }
+        .header h1 { color: #fff; font-size: 24px; font-weight: 800; letter-spacing: 1px; }
+        .header p { color: rgba(255,255,255,0.85); font-size: 15px; margin-top: 6px; }
+        .body { padding: 36px 40px; }
+        .alert-name { font-size: 22px; font-weight: 700; color: #f39c12; margin-bottom: 8px; }
+        .alert-name.alto { color: #c0392b; }
+        .alert-desc { font-size: 15px; color: #555; line-height: 1.6; margin-bottom: 28px; }
+        .info-block { background: #fffbf5; border: 1px solid #ffe8cc; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
+        .info-block.alto { background: #fff5f5; border-color: #f5c6cb; }
+        .info-block h3 { font-size: 13px; color: #999; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+        .info-block p { font-size: 15px; color: #333; }
+        .location-btn { display: block; background: #f39c12; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; text-align: center; margin: 8px 0 24px; }
+        .location-btn.alto { background: #c0392b; }
+        .message-block { background: #f8f8f8; border-left: 4px solid #f39c12; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }
+        .message-block.alto { border-left-color: #c0392b; }
+        .message-block h3 { font-size: 13px; color: #999; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+        .message-block p { font-size: 15px; color: #333; font-style: italic; line-height: 1.6; }
+        .divider { border: none; border-top: 1px solid #eee; margin: 24px 0; }
+        .footer-text { font-size: 13px; color: #999; line-height: 1.5; }
+        .footer { background: #f8f8f8; padding: 20px 40px; text-align: center; font-size: 12px; color: #aaa; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- El fondo de cabecera cambia si es de nivel ALTO -->
+    <div class="header" th:classappend="${#strings.equalsIgnoreCase(nivelRiesgo, 'ALTO')} ? 'alto'">
+        <div class="header-icon" th:text="${#strings.equalsIgnoreCase(nivelRiesgo, 'ALTO')} ? '🚨' : '⚠️'">⚠️</div>
+        <h1 th:text="${#strings.equalsIgnoreCase(nivelRiesgo, 'ALTO')} ? '⚠️ AVISO DE PELIGRO ALTO' : '⚠️ AVISO DE PELIGRO MEDIO'">Aviso de Proximidad</h1>
+        <p>Tu contacto está transitando cerca de una zona insegura</p>
+    </div>
+    <div class="body">
+        <p class="alert-name" th:classappend="${#strings.equalsIgnoreCase(nivelRiesgo, 'ALTO')} ? 'alto'" th:text="${nombresUsuario}">Jose Saravia</p>
+        <p class="alert-desc" th:text="${#strings.equalsIgnoreCase(nivelRiesgo, 'ALTO')} 
+            ? 'Ha ingresado en un sector marcado con ALTO riesgo. Te enviamos su ubicación preventiva en tiempo real.' 
+            : 'Ha ingresado en un sector marcado con MEDIO riesgo. Te enviamos su ubicación preventiva en tiempo real.'">
+            Se encuentra transitando cerca de una zona de peligro reportada por la comunidad.
+        </p>
+
+        <div class="info-block" th:classappend="${#strings.equalsIgnoreCase(nivelRiesgo, 'ALTO')} ? 'alto'">
+            <h3>📍 Detalle del Sector de Riesgo</h3>
+            <p style="font-weight: 700; margin-bottom: 8px;" th:text="${zonaNombre}">Robos al paso - Parque Central</p>
+            <p>Lat: <span th:text="${latitud}">-12.0464</span> | Lng: <span th:text="${longitud}">-77.0428</span></p>
+        </div>
+
+        <a class="location-btn" th:classappend="${#strings.equalsIgnoreCase(nivelRiesgo, 'ALTO')} ? 'alto'" th:href="${urlMaps}" href="#">
+            📍 Ver ubicación en Google Maps
+        </a>
+
+        <div class="message-block" th:classappend="${#strings.equalsIgnoreCase(nivelRiesgo, 'ALTO')} ? 'alto'">
+            <h3>💬 Descripción del Riesgo</h3>
+            <p th:text="${mensaje}">Presencia de asaltos a mano armada frecuentemente.</p>
+        </div>
+
+        <hr class="divider">
+
+        <p class="footer-text">🛡️ Este es un aviso de protección preventivo generado automáticamente por la red comunitaria de <strong>Paralert</strong>.</p>
+    </div>
+    <div class="footer">
+        <p>© 2026 Paralert — Sistema de Seguridad Ciudadana</p>
+        <p style="margin-top:6px;">Recibiste este correo porque eres contacto de confianza de <span th:text="${nombresUsuario}">este usuario</span>.</p>
+    </div>
+</div>
+</body>
+</html>

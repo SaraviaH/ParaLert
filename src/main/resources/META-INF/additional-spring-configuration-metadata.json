@@ -1,0 +1,62 @@
+{"properties": [
+  {
+    "name": "jwt.secret",
+    "type": "java.lang.String",
+    "description": "A description for 'jwt.secret'"
+  },
+  {
+    "name": "jwt.expiration",
+    "type": "java.lang.String",
+    "description": "A description for 'jwt.expiration'"
+  },
+  {
+    "name": "cloudinary.cloud-name",
+    "type": "java.lang.String",
+    "description": "A description for 'cloudinary.cloud-name'"
+  },
+  {
+    "name": "cloudinary.api-key",
+    "type": "java.lang.String",
+    "description": "A description for 'cloudinary.api-key'"
+  },
+  {
+    "name": "cloudinary.api-secret",
+    "type": "java.lang.String",
+    "description": "A description for 'cloudinary.api-secret'"
+  },
+  {
+    "name": "cors.allowed-origins",
+    "type": "java.lang.String",
+    "description": "A description for 'cors.allowed-origins'"
+  },
+  {
+    "name": "registro.codigo.expiracion-minutos",
+    "type": "java.lang.String",
+    "description": "A description for 'registro.codigo.expiracion-minutos'"
+  },
+  {
+    "name": "registro.pendiente.expiracion-minutos",
+    "type": "java.lang.String",
+    "description": "A description for 'registro.pendiente.expiracion-minutos'"
+  },
+  {
+    "name": "nivel.confianza.registro",
+    "type": "java.lang.String",
+    "description": "A description for 'nivel.confianza.registro'"
+  },
+  {
+    "name": "nivel.confianza.verificado",
+    "type": "java.lang.String",
+    "description": "A description for 'nivel.confianza.verificado'"
+  },
+  {
+    "name": "apiperu.base-url",
+    "type": "java.lang.String",
+    "description": "A description for 'apiperu.base-url'"
+  },
+  {
+    "name": "apiperu.token",
+    "type": "java.lang.String",
+    "description": "A description for 'apiperu.token'"
+  }
+]}

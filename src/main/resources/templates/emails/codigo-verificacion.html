@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Código de verificación - Paralert</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; }
+        .container { max-width: 560px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header { background: #1a1a2e; padding: 32px; text-align: center; }
+        .header h1 { color: #fff; font-size: 26px; font-weight: 700; letter-spacing: 1px; }
+        .header span { color: #e94560; }
+        .body { padding: 36px 40px; }
+        .greeting { font-size: 18px; color: #222; font-weight: 600; margin-bottom: 12px; }
+        .text { font-size: 15px; color: #555; line-height: 1.6; margin-bottom: 20px; }
+        .email-badge { background: #f0f0f0; border-radius: 8px; padding: 10px 16px; font-size: 14px; color: #333; margin-bottom: 28px; display: inline-block; }
+        .code-box { background: linear-gradient(135deg, #1a1a2e, #16213e); border-radius: 12px; padding: 24px; text-align: center; margin: 20px 0 28px; }
+        .code-label { font-size: 12px; color: #aaa; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+        .code { font-size: 42px; font-weight: 800; color: #e94560; letter-spacing: 10px; }
+        .expire { font-size: 13px; color: #888; margin-bottom: 28px; }
+        .expire strong { color: #e94560; }
+        .divider { border: none; border-top: 1px solid #eee; margin: 24px 0; }
+        .warning { font-size: 13px; color: #999; line-height: 1.5; }
+        .footer { background: #f8f8f8; padding: 20px 40px; text-align: center; font-size: 12px; color: #aaa; }
+        .footer a { color: #e94560; text-decoration: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>PAR<span>ALERT</span></h1>
+    </div>
+    <div class="body">
+        <p class="greeting">Hola, <span th:text="${nombres}">Usuario</span> 👋</p>
+        <p class="text">Recibimos tu solicitud para crear una cuenta en Paralert. Usa el siguiente código para verificar tu correo electrónico:</p>
+        <div class="email-badge">📧 <span th:text="${email}">correo@ejemplo.com</span></div>
+
+        <div class="code-box">
+            <p class="code-label">Tu código de verificación</p>
+            <p class="code" th:text="${codigo}">123456</p>
+        </div>
+
+        <p class="expire">Este código expira en <strong>15 minutos</strong>. No lo compartas con nadie.</p>
+
+        <hr class="divider">
+
+        <p class="warning">Si no solicitaste esta cuenta, puedes ignorar este correo. Nadie podrá acceder a tu cuenta sin este código.</p>
+    </div>
+    <div class="footer">
+        <p>© 2024 Paralert — Sistema de Alertas SOS</p>
+        <p style="margin-top:6px;">Este es un correo automático, no respondas a este mensaje.</p>
+    </div>
+</div>
+</body>
+</html>
