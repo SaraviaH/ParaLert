@@ -26,8 +26,12 @@ public class ZonaPeligrosaController {
     // GET /api/zonas
     // =====================================================
     @GetMapping
-    public ResponseEntity<List<ZonaPeligrosaResponse>> obtenerTodasLasZonas() {
-        return ResponseEntity.ok(zonaPeligrosaService.obtenerTodasLasZonas());
+    public ResponseEntity<List<ZonaPeligrosaResponse>> obtenerTodasLasZonas(
+            @RequestParam(required = false) java.math.BigDecimal minLat,
+            @RequestParam(required = false) java.math.BigDecimal maxLat,
+            @RequestParam(required = false) java.math.BigDecimal minLon,
+            @RequestParam(required = false) java.math.BigDecimal maxLon) {
+        return ResponseEntity.ok(zonaPeligrosaService.obtenerTodasLasZonas(minLat, maxLat, minLon, maxLon));
     }
 
     // =====================================================

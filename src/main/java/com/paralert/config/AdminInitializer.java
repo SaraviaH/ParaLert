@@ -68,7 +68,7 @@ public class AdminInitializer implements CommandLineRunner {
 
         // 1. Inicializar roles si no existen
         Rol rolAdmin = inicializarRolSiNoExiste("ADMIN");
-        Rol rolCiudadano = inicializarRolSiNoExiste("CIUDADANO");
+        inicializarRolSiNoExiste("CIUDADANO");
 
         // 2. Crear o actualizar administrador para asegurar que tenga únicamente el rol ADMIN
         java.util.Optional<Usuario> adminOpt = usuarioRepository.findByEmail(ADMIN_EMAIL);

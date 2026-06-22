@@ -67,33 +67,29 @@ public class AdminController {
         long totalTipos = tipoPeligroRepository.count();
         long totalAfectados = registroProximidadRepository.count();
 
-        // 1. Distribución por Nivel de Riesgo (con manejo de nulos)
-        Map<String, Long> distribucionRiesgo = zonaPeligrosaRepository.findAll().stream()
-                .collect(Collectors.groupingBy(
-                        z -> z.getNivelRiesgo() != null ? z.getNivelRiesgo().toUpperCase() : "OBSERVACION",
-                        Collectors.counting()
+        // 1. Distribución por Nivel de Riesgo (en base de datos)
+        Map<String, Long> distribucionRiesgo = zonaPeligrosaRepository.countZonesByNivelRiesgo().stream()
+                .collect(Collectors.toMap(
+                        row -> row[0] != null ? ((String) row[0]).toUpperCase() : "OBSERVACION",
+                        row -> (Long) row[1]
                 ));
 
-        // 2. Distribución por Categorías de Peligro
-        Map<String, Long> distribucionCategoria = zonaPeligrosaRepository.findAll().stream()
-                .collect(Collectors.groupingBy(
-                        z -> z.getTipoPeligro() != null ? z.getTipoPeligro().getNombre() : "Sin Categoría",
-                        Collectors.counting()
+        // 2. Distribución por Categorías de Peligro (en base de datos)
+        Map<String, Long> distribucionCategoria = zonaPeligrosaRepository.countZonesByTipoPeligro().stream()
+                .collect(Collectors.toMap(
+                        row -> row[0] != null ? (String) row[0] : "Sin Categoría",
+                        row -> (Long) row[1]
                 ));
 
-        // 3. Obtener Zonas Calientes (filtrando registros de zonas eliminadas o nulas)
-        List<com.paralert.dto.response.ZonaCalienteResponse> zonasCalientes = registroProximidadRepository.findAll().stream()
-                .filter(reg -> reg.getZona() != null)
-                .collect(Collectors.groupingBy(reg -> reg.getZona(), Collectors.counting()))
-                .entrySet().stream()
-                .map(entry -> com.paralert.dto.response.ZonaCalienteResponse.builder()
-                        .zonaId(entry.getKey().getId())
-                        .zonaNombre(entry.getKey().getTitulo() != null ? entry.getKey().getTitulo() : "Sin Título")
-                        .nivelRiesgo(entry.getKey().getNivelRiesgo() != null ? entry.getKey().getNivelRiesgo() : "OBSERVACION")
-                        .cantidadNotificaciones(entry.getValue())
+        // 3. Obtener Zonas Calientes (en base de datos con paginación nativa)
+        List<com.paralert.dto.response.ZonaCalienteResponse> zonasCalientes = registroProximidadRepository
+                .findTopHotZones(org.springframework.data.domain.PageRequest.of(0, 5)).stream()
+                .map(row -> com.paralert.dto.response.ZonaCalienteResponse.builder()
+                        .zonaId((Long) row[0])
+                        .zonaNombre((String) row[1])
+                        .nivelRiesgo((String) row[2])
+                        .cantidadNotificaciones((Long) row[3])
                         .build())
-                .sorted((a, b) -> Long.compare(b.getCantidadNotificaciones(), a.getCantidadNotificaciones()))
-                .limit(5)
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(AdminStatsResponse.builder()
@@ -362,18 +358,14 @@ public class AdminController {
             agregarCeldaCabecera(hotZonesTable, "Nivel de Peligro", fontBodyBold);
             agregarCeldaCabecera(hotZonesTable, "Alertas de Proximidad", fontBodyBold);
 
-            List<com.paralert.dto.response.ZonaCalienteResponse> zonasCalientes = registroProximidadRepository.findAll().stream()
-                    .filter(reg -> reg.getZona() != null)
-                    .collect(Collectors.groupingBy(reg -> reg.getZona(), Collectors.counting()))
-                    .entrySet().stream()
-                    .map(entry -> com.paralert.dto.response.ZonaCalienteResponse.builder()
-                            .zonaId(entry.getKey().getId())
-                            .zonaNombre(entry.getKey().getTitulo() != null ? entry.getKey().getTitulo() : "Sin Título")
-                            .nivelRiesgo(entry.getKey().getNivelRiesgo() != null ? entry.getKey().getNivelRiesgo() : "OBSERVACION")
-                            .cantidadNotificaciones(entry.getValue())
+            List<com.paralert.dto.response.ZonaCalienteResponse> zonasCalientes = registroProximidadRepository
+                    .findTopHotZones(org.springframework.data.domain.PageRequest.of(0, 5)).stream()
+                    .map(row -> com.paralert.dto.response.ZonaCalienteResponse.builder()
+                            .zonaId((Long) row[0])
+                            .zonaNombre((String) row[1])
+                            .nivelRiesgo((String) row[2])
+                            .cantidadNotificaciones((Long) row[3])
                             .build())
-                    .sorted((a, b) -> Long.compare(b.getCantidadNotificaciones(), a.getCantidadNotificaciones()))
-                    .limit(5)
                     .collect(Collectors.toList());
 
             if (zonasCalientes.isEmpty()) {

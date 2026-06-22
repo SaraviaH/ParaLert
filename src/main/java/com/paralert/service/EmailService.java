@@ -1,24 +1,40 @@
 package com.paralert.service;
 
-import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EmailService {
 
-    private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
+    private final RestClient restClient;
+
+    @Value("${brevo.sender.name}")
+    private String senderName;
+
+    @Value("${brevo.sender.email}")
+    private String senderEmail;
+
+    public EmailService(TemplateEngine templateEngine,
+                        @Value("${brevo.api-key}") String apiKey) {
+        this.templateEngine = templateEngine;
+        this.restClient = RestClient.builder()
+                .baseUrl("https://api.brevo.com/v3")
+                .defaultHeader("api-key", apiKey)
+                .defaultHeader("Content-Type", "application/json")
+                .defaultHeader("Accept", "application/json")
+                .build();
+    }
 
     @Async
     public void enviarCodigoVerificacion(String destinatario, String nombres, String codigo) {
@@ -164,12 +180,26 @@ public class EmailService {
 
 
     private void enviarHtml(String destinatario, String asunto, String html) throws Exception {
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-        helper.setTo(destinatario);
-        helper.setSubject(asunto);
-        helper.setText(html, true);
-        mailSender.send(message);
-        log.info("Correo enviado a: {}", destinatario);
+        Map<String, Object> sender = Map.of(
+                "name", senderName,
+                "email", senderEmail
+        );
+        Map<String, Object> to = Map.of(
+                "email", destinatario
+        );
+        Map<String, Object> payload = Map.of(
+                "sender", sender,
+                "to", List.of(to),
+                "subject", asunto,
+                "htmlContent", html
+        );
+
+        restClient.post()
+                .uri("/smtp/email")
+                .body(payload)
+                .retrieve()
+                .toBodilessEntity();
+
+        log.info("Correo enviado exitosamente a {} vía Brevo API", destinatario);
     }
 }

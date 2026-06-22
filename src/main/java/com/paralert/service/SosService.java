@@ -25,7 +25,7 @@ public class SosService {
     private final SosAlertaRepository sosAlertaRepository;
     private final AlertaEvidenciaRepository alertaEvidenciaRepository;
     private final AlertaEnviadaRepository alertaEnviadaRepository;
-    private final ContactoRepository contactoRepository;
+    private final AmigoRepository amigoRepository;
     private final EmailService emailService;
     private final CloudinaryService cloudinaryService;
     private final ZonaPeligrosaRepository zonaPeligrosaRepository;
@@ -36,9 +36,9 @@ public class SosService {
     @Transactional
     public SosResponse dispararSos(Usuario usuario, SosRequest request) {
         // Enforce 10-minute cooldown for SOS alerts
-        List<SosAlerta> alertasPrevias = sosAlertaRepository.findByUsuarioOrderByFechaCreacionDesc(usuario);
-        if (!alertasPrevias.isEmpty()) {
-            SosAlerta ultima = alertasPrevias.get(0);
+        java.util.Optional<SosAlerta> ultimaOpt = sosAlertaRepository.findFirstByUsuarioOrderByFechaCreacionDesc(usuario);
+        if (ultimaOpt.isPresent()) {
+            SosAlerta ultima = ultimaOpt.get();
             if (ultima.getFechaCreacion().plusMinutes(10).isAfter(LocalDateTime.now())) {
                 long segundosRestantes = java.time.Duration.between(LocalDateTime.now(), ultima.getFechaCreacion().plusMinutes(10)).toSeconds();
                 long minutos = segundosRestantes / 60;
@@ -88,14 +88,14 @@ public class SosService {
             log.info("Alerta SOS disparada en radio de zona #{}. +20 puntos, total: {}", zonaCercana.getId(), nuevosPuntos);
         }
 
-        // Notificar a todos los contactos de confianza
-        List<Contacto> contactos = contactoRepository.findByUsuario(usuario);
+        // Notificar a todos los amigos de confianza
+        List<Amigo> amigos = amigoRepository.findByUsuarioWithAmigoEager(usuario);
         int notificados = 0;
 
-        for (Contacto c : contactos) {
+        for (Amigo a : amigos) {
             try {
                 emailService.enviarAlertaSos(
-                        c.getContacto().getEmail(),
+                        a.getAmigo().getEmail(),
                         usuario.getNombres() + " " + (usuario.getApellidos() != null ? usuario.getApellidos() : ""),
                         request.getLatitud(),
                         request.getLongitud(),
@@ -104,20 +104,20 @@ public class SosService {
 
                 AlertaEnviada enviada = AlertaEnviada.builder()
                         .alerta(alerta)
-                        .contacto(c.getContacto())
-                        .email(c.getContacto().getEmail())
+                        .contacto(a.getAmigo())
+                        .email(a.getAmigo().getEmail())
                         .enviado(true)
                         .build();
 
                 alertaEnviadaRepository.save(enviada);
                 notificados++;
             } catch (Exception e) {
-                log.error("Error notificando a contacto {}: {}", c.getContacto().getEmail(), e.getMessage());
+                log.error("Error notificando a amigo {}: {}", a.getAmigo().getEmail(), e.getMessage());
 
                 AlertaEnviada fallida = AlertaEnviada.builder()
                         .alerta(alerta)
-                        .contacto(c.getContacto())
-                        .email(c.getContacto().getEmail())
+                        .contacto(a.getAmigo())
+                        .email(a.getAmigo().getEmail())
                         .enviado(false)
                         .build();
 

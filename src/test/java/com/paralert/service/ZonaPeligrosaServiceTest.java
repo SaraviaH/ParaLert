@@ -29,7 +29,7 @@ public class ZonaPeligrosaServiceTest {
     @Mock
     private TipoPeligroRepository tipoPeligroRepository;
     @Mock
-    private ContactoRepository contactoRepository;
+    private AmigoRepository amigoRepository;
     @Mock
     private EmailService emailService;
     @Mock

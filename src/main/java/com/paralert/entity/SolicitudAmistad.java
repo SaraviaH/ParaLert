@@ -7,21 +7,21 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "solicitudes_contacto")
+@Table(name = "solicitudes_amistad")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class SolicitudContacto {
+public class SolicitudAmistad {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "solicitante_id", nullable = false)
-    private Usuario solicitante;
+    @JoinColumn(name = "emisor_id", nullable = false)
+    private Usuario emisor;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receptor_id", nullable = false)
@@ -32,9 +32,9 @@ public class SolicitudContacto {
     @Builder.Default
     private EstadoSolicitud estado = EstadoSolicitud.PENDIENTE;
 
-    @Column(name = "fecha_creacion", nullable = false)
+    @Column(name = "fecha_envio", nullable = false)
     @Builder.Default
-    private LocalDateTime fechaCreacion = LocalDateTime.now();
+    private LocalDateTime fechaEnvio = LocalDateTime.now();
 
     @Column(name = "fecha_respuesta")
     private LocalDateTime fechaRespuesta;

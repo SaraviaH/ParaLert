@@ -34,7 +34,9 @@ public class PerfilService {
     // VER PERFIL
     // =====================================================
     public UserProfileResponse obtenerPerfil(Usuario usuario) {
-        return mapearPerfil(usuario);
+        Usuario dbUser = usuarioRepository.findById(usuario.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        return mapearPerfil(dbUser);
     }
 
     // =====================================================
@@ -44,23 +46,26 @@ public class PerfilService {
     // =====================================================
     @Transactional
     public UserProfileResponse actualizarPerfil(Usuario usuario, UpdateProfileRequest request) {
-        if (!usuario.getVerificado()) {
+        Usuario dbUser = usuarioRepository.findById(usuario.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (!dbUser.getVerificado()) {
             // Antes de verificar DNI puede cambiar nombres y apellidos
             if (request.getNombres() != null && !request.getNombres().isBlank()) {
-                usuario.setNombres(request.getNombres().trim());
+                dbUser.setNombres(request.getNombres().trim());
             }
             if (request.getApellidos() != null && !request.getApellidos().isBlank()) {
-                usuario.setApellidos(request.getApellidos().trim());
+                dbUser.setApellidos(request.getApellidos().trim());
             }
         }
 
         // Teléfono siempre editable
         if (request.getTelefono() != null && !request.getTelefono().isBlank()) {
-            usuario.setTelefono(request.getTelefono().trim());
+            dbUser.setTelefono(request.getTelefono().trim());
         }
 
-        usuarioRepository.save(usuario);
-        return mapearPerfil(usuario);
+        usuarioRepository.save(dbUser);
+        return mapearPerfil(dbUser);
     }
 
     // =====================================================
@@ -68,7 +73,10 @@ public class PerfilService {
     // =====================================================
     @Transactional
     public UserProfileResponse verificarDni(Usuario usuario, VerifyDniRequest request) {
-        if (usuario.getVerificado()) {
+        Usuario dbUser = usuarioRepository.findById(usuario.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (dbUser.getVerificado()) {
             throw new IllegalStateException("Tu identidad ya está verificada");
         }
 
@@ -83,15 +91,15 @@ public class PerfilService {
             throw new IllegalStateException("No se pudo consultar el DNI. Intenta más tarde");
         }
 
-        usuario.setDni(dni);
-        usuario.setNombres(datos.nombres());
-        usuario.setApellidos(datos.apellidos());
-        usuario.setVerificado(true);
-        usuario.setFechaVerificacion(LocalDateTime.now());
-        usuario.setNivelConfianza(nivelConfianzaUtil.getNivelVerificado());
+        dbUser.setDni(dni);
+        dbUser.setNombres(datos.nombres());
+        dbUser.setApellidos(datos.apellidos());
+        dbUser.setVerificado(true);
+        dbUser.setFechaVerificacion(LocalDateTime.now());
+        dbUser.setNivelConfianza(nivelConfianzaUtil.getNivelVerificado());
 
-        usuarioRepository.save(usuario);
-        return mapearPerfil(usuario);
+        usuarioRepository.save(dbUser);
+        return mapearPerfil(dbUser);
     }
 
     // =====================================================
@@ -99,7 +107,10 @@ public class PerfilService {
     // =====================================================
     @Transactional
     public MessageResponse cambiarPassword(Usuario usuario, ChangePasswordRequest request) {
-        if (!passwordEncoder.matches(request.getPasswordActual(), usuario.getPasswordHash())) {
+        Usuario dbUser = usuarioRepository.findById(usuario.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (!passwordEncoder.matches(request.getPasswordActual(), dbUser.getPasswordHash())) {
             throw new IllegalArgumentException("La contraseña actual es incorrecta");
         }
 
@@ -107,8 +118,8 @@ public class PerfilService {
             throw new IllegalArgumentException("Las contraseñas no coinciden");
         }
 
-        usuario.setPasswordHash(passwordEncoder.encode(request.getNuevaPassword()));
-        usuarioRepository.save(usuario);
+        dbUser.setPasswordHash(passwordEncoder.encode(request.getNuevaPassword()));
+        usuarioRepository.save(dbUser);
 
         return new MessageResponse("Contraseña actualizada correctamente");
     }
@@ -118,6 +129,9 @@ public class PerfilService {
     // =====================================================
     @Transactional
     public UserProfileResponse subirFotoPerfil(Usuario usuario, MultipartFile archivo) throws IOException {
+        Usuario dbUser = usuarioRepository.findById(usuario.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
         if (archivo == null || archivo.isEmpty()) {
             throw new IllegalArgumentException("El archivo está vacío");
         }
@@ -127,19 +141,22 @@ public class PerfilService {
             throw new IllegalArgumentException("Solo se permiten imágenes");
         }
 
-        String url = cloudinaryService.subirFotoPerfil(archivo, usuario.getId());
-        usuario.setFotoPerfil(url);
-        usuarioRepository.save(usuario);
+        String url = cloudinaryService.subirFotoPerfil(archivo, dbUser.getId());
+        dbUser.setFotoPerfil(url);
+        usuarioRepository.save(dbUser);
 
-        return mapearPerfil(usuario);
+        return mapearPerfil(dbUser);
     }
 
     @Transactional
     public UserProfileResponse actualizarAlertas(Usuario usuario, Boolean habilitadas) {
-        usuario.setAlertasHabilitadas(habilitadas);
-        usuarioRepository.save(usuario);
-        log.info("Usuario {} actualizó preferencia de alertas a: {}", usuario.getEmail(), habilitadas);
-        return mapearPerfil(usuario);
+        Usuario dbUser = usuarioRepository.findById(usuario.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        dbUser.setAlertasHabilitadas(habilitadas);
+        usuarioRepository.save(dbUser);
+        log.info("Usuario {} actualizó preferencia de alertas a: {}", dbUser.getEmail(), habilitadas);
+        return mapearPerfil(dbUser);
     }
 
     // =====================================================

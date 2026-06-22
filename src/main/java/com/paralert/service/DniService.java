@@ -54,9 +54,8 @@ public class DniService {
                     new ParameterizedTypeReference<>() {}
             );
 
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                Map<String, Object> body = response.getBody();
-
+            Map<String, Object> body = response.getBody();
+            if (response.getStatusCode() == HttpStatus.OK && body != null) {
                 if (!Boolean.TRUE.equals(body.get("success"))) {
                     log.warn("Consulta DNI sin éxito para {}: {}", numeroDni, body.get("message"));
                     return null;

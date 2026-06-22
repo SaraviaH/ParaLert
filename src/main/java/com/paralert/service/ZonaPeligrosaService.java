@@ -10,10 +10,11 @@ import com.paralert.entity.Usuario;
 import com.paralert.entity.ZonaPeligrosa;
 import com.paralert.entity.Reporte;
 import com.paralert.entity.Confirmacion;
+import com.paralert.entity.Amigo;
 import com.paralert.repository.ComentarioZonaRepository;
 import com.paralert.repository.ZonaPeligrosaRepository;
 import com.paralert.repository.TipoPeligroRepository;
-import com.paralert.repository.ContactoRepository;
+import com.paralert.repository.AmigoRepository;
 import com.paralert.repository.RegistroProximidadRepository;
 import com.paralert.repository.ReporteRepository;
 import com.paralert.repository.ConfirmacionRepository;
@@ -22,9 +23,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import com.paralert.security.CustomUserDetails;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,7 +39,7 @@ public class ZonaPeligrosaService {
     private final ComentarioZonaRepository comentarioZonaRepository;
     private final CloudinaryService cloudinaryService;
     private final TipoPeligroRepository tipoPeligroRepository;
-    private final ContactoRepository contactoRepository;
+    private final AmigoRepository amigoRepository;
     private final EmailService emailService;
     private final RegistroProximidadRepository registroProximidadRepository;
     private final ReporteRepository reporteRepository;
@@ -47,9 +50,30 @@ public class ZonaPeligrosaService {
     // =====================================================
     @Transactional(readOnly = true)
     public List<ZonaPeligrosaResponse> obtenerTodasLasZonas() {
-        return zonaPeligrosaRepository.findAllByOrderByFechaCreacionDesc()
-                .stream()
-                .map(this::mapearZonaResponse)
+        return obtenerTodasLasZonas(null, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ZonaPeligrosaResponse> obtenerTodasLasZonas(
+            java.math.BigDecimal minLat, java.math.BigDecimal maxLat,
+            java.math.BigDecimal minLon, java.math.BigDecimal maxLon) {
+        
+        List<ZonaPeligrosa> zonas;
+        if (minLat != null && maxLat != null && minLon != null && maxLon != null) {
+            zonas = zonaPeligrosaRepository.findZonesInViewport(minLat, maxLat, minLon, maxLon);
+        } else {
+            zonas = zonaPeligrosaRepository.findAllWithUsuarioAndTipoPeligro();
+        }
+
+        Usuario usuarioAutenticado = obtenerUsuarioAutenticado();
+        Set<Long> zonasConfirmadasIds = new HashSet<>();
+        if (usuarioAutenticado != null) {
+            zonasConfirmadasIds = confirmacionRepository.findZonaIdsConfirmadasPorUsuario(usuarioAutenticado.getId());
+        }
+
+        final Set<Long> finalZonasConfirmadasIds = zonasConfirmadasIds;
+        return zonas.stream()
+                .map(z -> mapearZonaResponse(z, finalZonasConfirmadasIds))
                 .collect(Collectors.toList());
     }
 
@@ -153,7 +177,7 @@ public class ZonaPeligrosaService {
         ZonaPeligrosa zona = zonaPeligrosaRepository.findById(zonaId)
                 .orElseThrow(() -> new IllegalArgumentException("Zona no encontrada"));
 
-        return comentarioZonaRepository.findByZonaOrderByFechaCreacionAsc(zona)
+        return comentarioZonaRepository.findByZonaWithUsuarioOrderByFechaCreacionAsc(zona)
                 .stream()
                 .map(this::mapearComentarioResponse)
                 .collect(Collectors.toList());
@@ -253,31 +277,52 @@ public class ZonaPeligrosaService {
 
     @Transactional
     public ZonaPeligrosaResponse confirmarZona(Usuario usuario, Long id) {
-        ZonaPeligrosa zona = zonaPeligrosaRepository.findById(id)
+        // Bloqueo pesimista de escritura para evitar condiciones de carrera
+        ZonaPeligrosa zona = zonaPeligrosaRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new IllegalArgumentException("Zona no encontrada"));
 
-        if (confirmacionRepository.existsByUsuarioAndZona(usuario, zona)) {
-            throw new IllegalStateException("Ya has verificado/confirmado esta zona");
+        java.util.Optional<Confirmacion> existingOpt = confirmacionRepository.findByUsuarioAndZona(usuario, zona);
+        
+        int nuevosPuntos = zona.getPuntaje() != null ? zona.getPuntaje() : 10;
+        if (existingOpt.isPresent()) {
+            // Toggle off: eliminar confirmación y decrementar puntaje
+            Confirmacion conf = existingOpt.get();
+            confirmacionRepository.delete(conf);
+            if (zona.getConfirmaciones() != null) {
+                zona.getConfirmaciones().removeIf(c -> c.getId() != null && c.getId().equals(conf.getId()));
+            }
+            nuevosPuntos -= 5;
+            log.info("Zona #{} confirmación removida por usuario {}. -5 puntos, total: {}", id, usuario.getEmail(), nuevosPuntos);
+        } else {
+            // Toggle on: crear confirmación e incrementar puntaje
+            Confirmacion confirmacion = Confirmacion.builder()
+                    .usuario(usuario)
+                    .zona(zona)
+                    .build();
+            confirmacion = confirmacionRepository.save(confirmacion);
+            if (zona.getConfirmaciones() != null) {
+                zona.getConfirmaciones().add(confirmacion);
+            }
+            nuevosPuntos += 5;
+            log.info("Zona #{} confirmada por usuario {}. +5 puntos, total: {}", id, usuario.getEmail(), nuevosPuntos);
         }
 
-        Confirmacion confirmacion = Confirmacion.builder()
-                .usuario(usuario)
-                .zona(zona)
-                .build();
-        confirmacionRepository.save(confirmacion);
+        if (nuevosPuntos < 0) {
+            nuevosPuntos = 0;
+        }
 
-        // Sumar +5 puntos por confirmación de otro usuario
-        int nuevosPuntos = (zona.getPuntaje() != null ? zona.getPuntaje() : 10) + 5;
         zona.setPuntaje(nuevosPuntos);
         zona.setFechaUltimaActividad(LocalDateTime.now());
         zona.setRadio(calcularRadio(nuevosPuntos));
         zona.setNivelRiesgo(calcularNivelRiesgo(nuevosPuntos));
-        if ("OBSERVACION".equals(zona.getEstado()) && nuevosPuntos > 30) {
+        
+        if ("OBSERVACION".equals(zona.getNivelRiesgo())) {
+            zona.setEstado("OBSERVACION");
+        } else {
             zona.setEstado("ACTIVA");
         }
+        
         zonaPeligrosaRepository.save(zona);
-
-        log.info("Zona #{} confirmada por usuario {}. +5 puntos, total: {}", id, usuario.getEmail(), nuevosPuntos);
         return mapearZonaResponse(zona);
     }
 
@@ -296,7 +341,27 @@ public class ZonaPeligrosaService {
     // =====================================================
     // MAPEO A RESPUESTAS
     // =====================================================
+    private Usuario obtenerUsuarioAutenticado() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
+            return ((CustomUserDetails) authentication.getPrincipal()).getUsuario();
+        }
+        return null;
+    }
+
     private ZonaPeligrosaResponse mapearZonaResponse(ZonaPeligrosa zona) {
+        Usuario usuarioAutenticado = obtenerUsuarioAutenticado();
+        Set<Long> zonasConfirmadasIds = new HashSet<>();
+        if (usuarioAutenticado != null) {
+            if (confirmacionRepository.existsByUsuarioAndZona(usuarioAutenticado, zona)) {
+                zonasConfirmadasIds.add(zona.getId());
+            }
+        }
+        return mapearZonaResponse(zona, zonasConfirmadasIds);
+    }
+
+    private ZonaPeligrosaResponse mapearZonaResponse(ZonaPeligrosa zona, Set<Long> zonasConfirmadasIds) {
         List<ComentarioZona> comentarios = zona.getComentarios();
         
         double calificacionPromedio = 0.0;
@@ -318,6 +383,8 @@ public class ZonaPeligrosaService {
                     .collect(Collectors.toList());
         }
 
+        boolean verificado = zonasConfirmadasIds.contains(zona.getId());
+
         return ZonaPeligrosaResponse.builder()
                 .id(zona.getId())
                 .titulo(zona.getTitulo())
@@ -338,6 +405,7 @@ public class ZonaPeligrosaService {
                 .tipoPeligroId(zona.getTipoPeligro() != null ? zona.getTipoPeligro().getId() : null)
                 .creadorNivelConfianza(zona.getUsuario().getNivelConfianza())
                 .reportes(reportesList)
+                .confirmadoPorUsuario(verificado)
                 .build();
     }
 
@@ -470,11 +538,11 @@ public class ZonaPeligrosaService {
                     }
                     
                     if (usuario != null) {
-                        List<com.paralert.entity.Contacto> contactos = contactoRepository.findByUsuario(usuario);
-                        for (com.paralert.entity.Contacto c : contactos) {
+                        List<Amigo> amigos = amigoRepository.findByUsuarioWithAmigoEager(usuario);
+                        for (Amigo a : amigos) {
                             try {
                                 emailService.enviarAlertaProximidad(
-                                        c.getContacto().getEmail(),
+                                        a.getAmigo().getEmail(),
                                         usuario.getNombres() + " " + (usuario.getApellidos() != null ? usuario.getApellidos() : ""),
                                         request.getLatitud(),
                                         request.getLongitud(),

@@ -142,7 +142,7 @@ public class AuthService {
 
         registroPendienteRepository.delete(pendiente);
 
-        String token = jwtUtil.generateToken(email);
+        String token = jwtUtil.generateToken(usuario);
 
         return AuthResponse.builder()
                 .token(token)
@@ -177,7 +177,7 @@ public class AuthService {
         usuario.setUltimoAcceso(LocalDateTime.now());
         usuarioRepository.save(usuario);
 
-        String token = jwtUtil.generateToken(email);
+        String token = jwtUtil.generateToken(usuario);
 
         return AuthResponse.builder()
                 .token(token)

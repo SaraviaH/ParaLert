@@ -33,4 +33,5 @@ public class ZonaPeligrosaResponse {
     private Long tipoPeligroId;
     private Integer creadorNivelConfianza;
     private List<ReporteResponse> reportes;
+    private Boolean confirmadoPorUsuario;
 }

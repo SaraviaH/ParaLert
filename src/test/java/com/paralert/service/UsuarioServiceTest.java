@@ -51,6 +51,8 @@ public class UsuarioServiceTest {
         req.setApellidos("Elias Saravia");
         req.setTelefono("987654321");
 
+        when(usuarioRepository.findById(1L)).thenReturn(java.util.Optional.of(usuario));
+
         UserProfileResponse res = perfilService.actualizarPerfil(usuario, req);
 
         assertNotNull(res);
@@ -75,6 +77,7 @@ public class UsuarioServiceTest {
 
         DniService.DniData mockData = new DniService.DniData("Jose Manuel", "Elias Saravia");
 
+        when(usuarioRepository.findById(1L)).thenReturn(java.util.Optional.of(usuario));
         when(usuarioRepository.existsByDni("76543210")).thenReturn(false);
         when(dniService.consultarDni("76543210")).thenReturn(mockData);
         when(nivelConfianzaUtil.getNivelVerificado()).thenReturn(80);
