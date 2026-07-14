@@ -13,4 +13,6 @@ public interface CodigoVerificacionRepository extends JpaRepository<CodigoVerifi
             Usuario usuario, TipoCodigo tipo);
 
     void deleteByUsuarioAndTipo(Usuario usuario, TipoCodigo tipo);
+
+    void deleteByUsuario(Usuario usuario);
 }

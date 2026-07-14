@@ -14,4 +14,8 @@ public interface SosAlertaRepository extends JpaRepository<SosAlerta, Long> {
     java.util.Optional<SosAlerta> findFirstByUsuarioOrderByFechaCreacionDesc(Usuario usuario);
 
     List<SosAlerta> findByUsuarioAndEstadoOrderByFechaCreacionDesc(Usuario usuario, EstadoAlerta estado);
+
+    List<SosAlerta> findByUsuario(Usuario usuario);
+
+    void deleteByUsuario(Usuario usuario);
 }

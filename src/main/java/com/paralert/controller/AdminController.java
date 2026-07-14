@@ -12,6 +12,7 @@ import com.paralert.entity.Reporte;
 import com.paralert.entity.ZonaPeligrosa;
 import com.paralert.entity.Confirmacion;
 import com.paralert.entity.RegistroProximidad;
+import com.paralert.entity.SosAlerta;
 import com.paralert.entity.enums.EstadoUsuario;
 import com.paralert.repository.*;
 import com.paralert.service.ZonaPeligrosaService;
@@ -52,6 +53,10 @@ public class AdminController {
     private final IaAnalysisService iaAnalysisService;
     private final ReporteRepository reporteRepository;
     private final ConfirmacionRepository confirmacionRepository;
+    private final AmigoRepository amigoRepository;
+    private final SolicitudAmistadRepository solicitudAmistadRepository;
+    private final CodigoVerificacionRepository codigoVerificacionRepository;
+    private final AlertaEnviadaRepository alertaEnviadaRepository;
 
     // =====================================================
     // ESTADÍSTICAS DASHBOARD
@@ -150,6 +155,68 @@ public class AdminController {
             return ResponseEntity.ok(new MessageResponse("Estado del usuario modificado a: " + nuevoEstado.name()));
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Estado no válido. Usa: ACTIVO, BLOQUEADO, INACTIVO o ELIMINADO");
+        }
+    }
+
+    // =====================================================
+    // ELIMINAR USUARIO FISICAMENTE (LIMPIEZA DE DEPENDENCIAS)
+    // DELETE /api/admin/usuarios/{id}
+    // =====================================================
+    @DeleteMapping("/usuarios/{id}")
+    @Transactional
+    public ResponseEntity<MessageResponse> eliminarUsuario(@PathVariable Long id) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        try {
+            // 1. Solicitudes de amistad
+            solicitudAmistadRepository.deleteByEmisorOrReceptor(usuario, usuario);
+
+            // 2. Relaciones de amistad (amigos)
+            amigoRepository.deleteByUsuarioOrAmigo(usuario, usuario);
+
+            // 3. Códigos de verificación
+            codigoVerificacionRepository.deleteByUsuario(usuario);
+
+            // 4. Confirmaciones de zonas
+            confirmacionRepository.deleteByUsuario(usuario);
+
+            // 5. Comentarios de zonas
+            comentarioZonaRepository.deleteByUsuario(usuario);
+
+            // 6. Reportes de incidentes
+            reporteRepository.deleteByUsuario(usuario);
+
+            // 7. Registros de proximidad asociados al usuario
+            registroProximidadRepository.deleteByUsuario(usuario);
+
+            // 8. Registros de proximidad asociados a zonas creadas por el usuario
+            List<ZonaPeligrosa> zonasCreadas = zonaPeligrosaRepository.findByUsuario(usuario);
+            if (!zonasCreadas.isEmpty()) {
+                registroProximidadRepository.deleteByZonaIn(zonasCreadas);
+            }
+
+            // 9. Alertas enviadas donde el usuario es contacto
+            alertaEnviadaRepository.deleteByContacto(usuario);
+
+            // 10. Alertas SOS creadas por el usuario (cascada elimina evidencias y enviadas asociadas)
+            List<SosAlerta> alertas = sosAlertaRepository.findByUsuario(usuario);
+            sosAlertaRepository.deleteAll(alertas);
+
+            // 11. Zonas peligrosas creadas por el usuario (cascada elimina comentarios, reportes, confirmaciones)
+            if (!zonasCreadas.isEmpty()) {
+                zonaPeligrosaRepository.deleteAll(zonasCreadas);
+            }
+
+            // 12. Eliminar el usuario (cascada elimina usuario_roles)
+            usuarioRepository.delete(usuario);
+
+            return ResponseEntity.ok(new MessageResponse("Usuario y todas sus dependencias fueron eliminados correctamente de forma física."));
+        } catch (Exception e) {
+            // Registrar error para auditoría
+            System.err.println("Error al eliminar usuario " + id + ": " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Error al intentar eliminar físicamente al usuario: " + e.getMessage());
         }
     }
 

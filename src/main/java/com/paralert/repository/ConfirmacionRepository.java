@@ -17,5 +17,7 @@ public interface ConfirmacionRepository extends JpaRepository<Confirmacion, Long
 
     @Query("SELECT c.zona.id FROM Confirmacion c WHERE c.usuario.id = :usuarioId")
     Set<Long> findZonaIdsConfirmadasPorUsuario(@Param("usuarioId") Long usuarioId);
+
+    void deleteByUsuario(Usuario usuario);
 }
 

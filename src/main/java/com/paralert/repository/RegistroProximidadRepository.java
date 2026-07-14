@@ -20,4 +20,8 @@ public interface RegistroProximidadRepository extends JpaRepository<RegistroProx
            "GROUP BY rp.zona.id, rp.zona.titulo, rp.zona.nivelRiesgo " +
            "ORDER BY COUNT(rp) DESC")
     List<Object[]> findTopHotZones(Pageable pageable);
+
+    void deleteByUsuario(Usuario usuario);
+
+    void deleteByZonaIn(List<ZonaPeligrosa> zonas);
 }

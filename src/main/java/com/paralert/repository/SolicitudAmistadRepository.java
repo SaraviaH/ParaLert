@@ -34,4 +34,6 @@ public interface SolicitudAmistadRepository extends JpaRepository<SolicitudAmist
     @Modifying
     @Query("DELETE FROM SolicitudAmistad s WHERE (s.emisor = :u1 AND s.receptor = :u2) OR (s.emisor = :u2 AND s.receptor = :u1)")
     void deleteRequestsBetween(@Param("u1") Usuario u1, @Param("u2") Usuario u2);
+
+    void deleteByEmisorOrReceptor(Usuario emisor, Usuario receptor);
 }

@@ -1,6 +1,7 @@
 package com.paralert.repository;
 
 import com.paralert.entity.Reporte;
+import com.paralert.entity.Usuario;
 import com.paralert.entity.ZonaPeligrosa;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -34,4 +35,6 @@ public interface ReporteRepository extends JpaRepository<Reporte, Long> {
            "FROM reportes_incidentes " +
            "GROUP BY rango", nativeQuery = true)
     List<Object[]> countReportsByHoraRango();
+
+    void deleteByUsuario(Usuario usuario);
 }

@@ -23,4 +23,6 @@ public interface AmigoRepository extends JpaRepository<Amigo, Long> {
     void deleteByUsuarioAndAmigo(Usuario usuario, Usuario amigo);
 
     long countByUsuario(Usuario usuario);
+
+    void deleteByUsuarioOrAmigo(Usuario usuario, Usuario amigo);
 }

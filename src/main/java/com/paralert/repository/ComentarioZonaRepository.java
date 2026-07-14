@@ -1,6 +1,7 @@
 package com.paralert.repository;
 
 import com.paralert.entity.ComentarioZona;
+import com.paralert.entity.Usuario;
 import com.paralert.entity.ZonaPeligrosa;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -25,4 +26,6 @@ public interface ComentarioZonaRepository extends JpaRepository<ComentarioZona, 
            "LOWER(c.contenido) LIKE '%inventado%' OR " +
            "LOWER(c.contenido) LIKE '%ninguno%'")
     List<ComentarioZona> findSuspiciousComments();
+    
+    void deleteByUsuario(Usuario usuario);
 }

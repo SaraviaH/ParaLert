@@ -46,4 +46,8 @@ public interface ZonaPeligrosaRepository extends JpaRepository<ZonaPeligrosa, Lo
 
     @Query("SELECT DISTINCT z FROM ZonaPeligrosa z LEFT JOIN FETCH z.reportes WHERE z.puntaje > 100 OR (SELECT COUNT(r) FROM Reporte r WHERE r.zona = z AND r.fechaCreacion > :limite) >= 2")
     List<ZonaPeligrosa> findZonesWithHighRecentActivity(@Param("limite") java.time.LocalDateTime limite);
+
+    List<ZonaPeligrosa> findByUsuario(com.paralert.entity.Usuario usuario);
+
+    void deleteByUsuario(com.paralert.entity.Usuario usuario);
 }
