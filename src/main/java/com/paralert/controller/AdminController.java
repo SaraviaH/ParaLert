@@ -13,6 +13,7 @@ import com.paralert.entity.ZonaPeligrosa;
 import com.paralert.entity.Confirmacion;
 import com.paralert.entity.RegistroProximidad;
 import com.paralert.entity.SosAlerta;
+import com.paralert.entity.PalabraSospechosa;
 import com.paralert.entity.enums.EstadoUsuario;
 import com.paralert.repository.*;
 import com.paralert.service.ZonaPeligrosaService;
@@ -57,6 +58,8 @@ public class AdminController {
     private final SolicitudAmistadRepository solicitudAmistadRepository;
     private final CodigoVerificacionRepository codigoVerificacionRepository;
     private final AlertaEnviadaRepository alertaEnviadaRepository;
+    private final PalabraSospechosaRepository palabraSospechosaRepository;
+
 
     // =====================================================
     // ESTADÍSTICAS DASHBOARD
@@ -678,5 +681,127 @@ public class AdminController {
         cell.setPadding(8);
         cell.setHorizontalAlignment(Element.ALIGN_LEFT);
         table.addCell(cell);
+    }
+
+    // =====================================================
+    // APROBAR COMENTARIO SOSPECHOSO
+    // POST /api/admin/comentarios/{id}/aprobar
+    // =====================================================
+    @PostMapping("/comentarios/{id}/aprobar")
+    @Transactional
+    public ResponseEntity<MessageResponse> aprobarComentario(@PathVariable Long id) {
+        ComentarioZona comentario = comentarioZonaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Comentario no encontrado"));
+        
+        if (Boolean.TRUE.equals(comentario.getSospechoso())) {
+            comentario.setSospechoso(false);
+            comentario.setJuicioTipo("APROBADO");
+            comentario.setJuicioJustificacion("Aprobado manualmente por el administrador.");
+            comentario.setFechaEvaluacion(LocalDateTime.now());
+            comentario.setEvaluador("MODERADO_MANUAL");
+            comentarioZonaRepository.save(comentario);
+
+            // Añadir los 2 puntos de veracidad a la zona correspondientes a este comentario
+            ZonaPeligrosa zona = comentario.getZona();
+            if (zona != null) {
+                int nuevosPuntos = (zona.getPuntaje() != null ? zona.getPuntaje() : 10) + 2;
+                zona.setPuntaje(nuevosPuntos);
+                zona.setRadio(ZonaPeligrosaService.calcularRadio(nuevosPuntos));
+                zona.setNivelRiesgo(ZonaPeligrosaService.calcularNivelRiesgo(nuevosPuntos));
+                if ("OBSERVACION".equals(zona.getEstado()) && nuevosPuntos > 30) {
+                    zona.setEstado("ACTIVA");
+                }
+                zonaPeligrosaRepository.save(zona);
+            }
+        }
+        return ResponseEntity.ok(new MessageResponse("Comentario aprobado y puntos de la zona restaurados."));
+    }
+
+    // =====================================================
+    // APROBAR REPORTE SOSPECHOSO
+    // POST /api/admin/reportes/{id}/aprobar
+    // =====================================================
+    @PostMapping("/reportes/{id}/aprobar")
+    @Transactional
+    public ResponseEntity<MessageResponse> aprobarReporte(@PathVariable Long id) {
+        Reporte reporte = reporteRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Reporte no encontrado"));
+        
+        if (Boolean.TRUE.equals(reporte.getSospechoso())) {
+            reporte.setSospechoso(false);
+            reporte.setJuicioTipo("APROBADO");
+            reporte.setJuicioJustificacion("Aprobado manualmente por el administrador.");
+            reporte.setFechaEvaluacion(LocalDateTime.now());
+            reporte.setEvaluador("MODERADO_MANUAL");
+            reporteRepository.save(reporte);
+
+            // Añadir los 10 puntos de veracidad a la zona correspondientes a este reporte
+            ZonaPeligrosa zona = reporte.getZona();
+            if (zona != null) {
+                int nuevosPuntos = (zona.getPuntaje() != null ? zona.getPuntaje() : 10) + 10;
+                zona.setPuntaje(nuevosPuntos);
+                zona.setRadio(ZonaPeligrosaService.calcularRadio(nuevosPuntos));
+                zona.setNivelRiesgo(ZonaPeligrosaService.calcularNivelRiesgo(nuevosPuntos));
+                if ("OBSERVACION".equals(zona.getEstado()) && nuevosPuntos > 30) {
+                    zona.setEstado("ACTIVA");
+                }
+                zonaPeligrosaRepository.save(zona);
+            }
+        }
+        return ResponseEntity.ok(new MessageResponse("Reporte aprobado y puntos de la zona restaurados."));
+    }
+
+    // =====================================================
+    // GESTIÓN DEL DICCIONARIO: LISTAR PALABRAS
+    // GET /api/admin/diccionario
+    // =====================================================
+    @GetMapping("/diccionario")
+    public ResponseEntity<List<PalabraSospechosa>> listarDiccionario() {
+        return ResponseEntity.ok(palabraSospechosaRepository.findAll());
+    }
+
+    // =====================================================
+    // GESTIÓN DEL DICCIONARIO: AGREGAR PALABRA
+    // POST /api/admin/diccionario
+    // =====================================================
+    @PostMapping("/diccionario")
+    @Transactional
+    public ResponseEntity<PalabraSospechosa> agregarPalabraDiccionario(@RequestBody Map<String, String> request) {
+        String palabra = request.get("palabra");
+        String categoria = request.get("categoria");
+
+        if (palabra == null || palabra.trim().isEmpty()) {
+            throw new IllegalArgumentException("La palabra es obligatoria");
+        }
+        if (categoria == null || categoria.trim().isEmpty()) {
+            categoria = "FALSO";
+        }
+
+        palabra = palabra.trim().toLowerCase();
+        categoria = categoria.trim().toUpperCase();
+
+        if (palabraSospechosaRepository.existsByPalabra(palabra)) {
+            throw new IllegalArgumentException("La palabra ya existe en el diccionario");
+        }
+
+        PalabraSospechosa ps = PalabraSospechosa.builder()
+                .palabra(palabra)
+                .categoria(categoria)
+                .fechaCreado(LocalDateTime.now())
+                .build();
+        return ResponseEntity.ok(palabraSospechosaRepository.save(ps));
+    }
+
+    // =====================================================
+    // GESTIÓN DEL DICCIONARIO: ELIMINAR PALABRA
+    // DELETE /api/admin/diccionario/{id}
+    // =====================================================
+    @DeleteMapping("/diccionario/{id}")
+    @Transactional
+    public ResponseEntity<MessageResponse> eliminarPalabraDiccionario(@PathVariable Long id) {
+        PalabraSospechosa ps = palabraSospechosaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Palabra no encontrada"));
+        palabraSospechosaRepository.delete(ps);
+        return ResponseEntity.ok(new MessageResponse("Palabra eliminada del diccionario correctamente"));
     }
 }

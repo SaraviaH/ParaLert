@@ -44,6 +44,8 @@ public class ZonaPeligrosaService {
     private final RegistroProximidadRepository registroProximidadRepository;
     private final ReporteRepository reporteRepository;
     private final ConfirmacionRepository confirmacionRepository;
+    private final IaAnalysisService iaAnalysisService;
+
 
     // =====================================================
     // LISTAR TODAS LAS ZONAS DE RIESGO
@@ -120,6 +122,7 @@ public class ZonaPeligrosaService {
             }
         }
 
+        boolean esNuevaZona = (zona == null);
         if (zona == null) {
             // Crear nueva zona peligrosa en observación
             zona = ZonaPeligrosa.builder()
@@ -151,6 +154,7 @@ public class ZonaPeligrosaService {
                 zona.setEstado("ACTIVA");
             }
             
+            // Corregido: guardar después de aplicar puntos
             zona = zonaPeligrosaRepository.save(zona);
             log.info("Reporte añadido a zona existente #{}. Nuevos puntos: {}, radio: {}", zona.getId(), nuevosPuntos, zona.getRadio());
         }
@@ -165,6 +169,28 @@ public class ZonaPeligrosaService {
                 .longitud(request.getLongitud())
                 .build();
         reporteRepository.save(reporte);
+
+        // Moderar reporte automáticamente de forma local
+        iaAnalysisService.analizarReporte(reporte);
+
+        if (Boolean.TRUE.equals(reporte.getSospechoso())) {
+            log.warn("Reporte marcado como sospechoso de inmediato. Reajustando puntos de la zona #{}", zona.getId());
+            if (esNuevaZona) {
+                zona.setPuntaje(0);
+                zona.setRadio(calcularRadio(0));
+                zona.setNivelRiesgo("OBSERVACION");
+                zonaPeligrosaRepository.save(zona);
+            } else {
+                int nuevosPuntos = Math.max(0, zona.getPuntaje() - 10);
+                zona.setPuntaje(nuevosPuntos);
+                zona.setRadio(calcularRadio(nuevosPuntos));
+                zona.setNivelRiesgo(calcularNivelRiesgo(nuevosPuntos));
+                if (nuevosPuntos <= 30) {
+                    zona.setEstado("OBSERVACION");
+                }
+                zonaPeligrosaRepository.save(zona);
+            }
+        }
 
         return mapearZonaResponse(zona);
     }
@@ -200,18 +226,24 @@ public class ZonaPeligrosaService {
 
         ComentarioZona guardado = comentarioZonaRepository.save(comentario);
         
-        // Sumar +2 puntos a la zona por el comentario
-        int nuevosPuntos = (zona.getPuntaje() != null ? zona.getPuntaje() : 10) + 2;
-        zona.setPuntaje(nuevosPuntos);
-        zona.setFechaUltimaActividad(LocalDateTime.now());
-        zona.setRadio(calcularRadio(nuevosPuntos));
-        zona.setNivelRiesgo(calcularNivelRiesgo(nuevosPuntos));
-        if ("OBSERVACION".equals(zona.getEstado()) && nuevosPuntos > 30) {
-            zona.setEstado("ACTIVA");
+        // Moderar comentario automáticamente de forma local
+        iaAnalysisService.analizarComentario(guardado);
+
+        if (Boolean.TRUE.equals(guardado.getSospechoso())) {
+            log.warn("Comentario marcado como sospechoso de inmediato. No se añaden puntos a la zona #{}", zona.getId());
+        } else {
+            // Sumar +2 puntos a la zona por el comentario
+            int nuevosPuntos = (zona.getPuntaje() != null ? zona.getPuntaje() : 10) + 2;
+            zona.setPuntaje(nuevosPuntos);
+            zona.setFechaUltimaActividad(LocalDateTime.now());
+            zona.setRadio(calcularRadio(nuevosPuntos));
+            zona.setNivelRiesgo(calcularNivelRiesgo(nuevosPuntos));
+            if ("OBSERVACION".equals(zona.getEstado()) && nuevosPuntos > 30) {
+                zona.setEstado("ACTIVA");
+            }
+            zonaPeligrosaRepository.save(zona);
+            log.info("Nuevo comentario añadido a zona #{} por usuario {}. +2 puntos, total: {}", zonaId, usuario.getEmail(), nuevosPuntos);
         }
-        zonaPeligrosaRepository.save(zona);
-        
-        log.info("Nuevo comentario añadido a zona #{} por usuario {}. +2 puntos, total: {}", zonaId, usuario.getEmail(), nuevosPuntos);
 
         return mapearComentarioResponse(guardado);
     }

@@ -11,15 +11,7 @@ import java.util.List;
 public interface ReporteRepository extends JpaRepository<Reporte, Long> {
     List<Reporte> findByZona(ZonaPeligrosa zona);
 
-    @Query("SELECT r FROM Reporte r LEFT JOIN FETCH r.zona LEFT JOIN FETCH r.usuario WHERE " +
-           "LOWER(r.descripcion) LIKE '%falso%' OR " +
-           "LOWER(r.descripcion) LIKE '%mentira%' OR " +
-           "LOWER(r.descripcion) LIKE '%broma%' OR " +
-           "LOWER(r.descripcion) LIKE '%fake%' OR " +
-           "LOWER(r.descripcion) LIKE '%prueba%' OR " +
-           "LOWER(r.descripcion) LIKE '%test%' OR " +
-           "LOWER(r.descripcion) LIKE '%inventado%' OR " +
-           "LOWER(r.descripcion) LIKE '%ninguno%'")
+    @Query("SELECT r FROM Reporte r LEFT JOIN FETCH r.zona LEFT JOIN FETCH r.usuario WHERE r.sospechoso = true ORDER BY r.fechaCreacion DESC")
     List<Reporte> findSuspiciousReports();
 
     @Query("SELECT COALESCE(r.tipoPeligro.nombre, 'Sin Categoría'), COUNT(r) FROM Reporte r GROUP BY r.tipoPeligro.nombre")
