@@ -61,6 +61,32 @@ public class AdminInitializer implements CommandLineRunner {
             jdbcTemplate.execute("UPDATE zonas_peligrosas SET fecha_ultima_actividad = CURRENT_TIMESTAMP WHERE fecha_ultima_actividad IS NULL");
             jdbcTemplate.execute("ALTER TABLE zonas_peligrosas ALTER COLUMN fecha_ultima_actividad SET NOT NULL");
 
+            // Tabla: zonas_comentarios (ComentarioZona) - columnas de moderación
+            jdbcTemplate.execute("ALTER TABLE zonas_comentarios ADD COLUMN IF NOT EXISTS sospechoso boolean DEFAULT false");
+            jdbcTemplate.execute("UPDATE zonas_comentarios SET sospechoso = false WHERE sospechoso IS NULL");
+            jdbcTemplate.execute("ALTER TABLE zonas_comentarios ALTER COLUMN sospechoso SET NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE zonas_comentarios ADD COLUMN IF NOT EXISTS juicio_tipo varchar(50)");
+            jdbcTemplate.execute("ALTER TABLE zonas_comentarios ADD COLUMN IF NOT EXISTS juicio_justificacion text");
+            jdbcTemplate.execute("ALTER TABLE zonas_comentarios ADD COLUMN IF NOT EXISTS evaluador varchar(50)");
+            jdbcTemplate.execute("ALTER TABLE zonas_comentarios ADD COLUMN IF NOT EXISTS fecha_evaluacion timestamp");
+
+            // Tabla: reportes_incidentes (Reporte) - columnas de moderación
+            jdbcTemplate.execute("ALTER TABLE reportes_incidentes ADD COLUMN IF NOT EXISTS sospechoso boolean DEFAULT false");
+            jdbcTemplate.execute("UPDATE reportes_incidentes SET sospechoso = false WHERE sospechoso IS NULL");
+            jdbcTemplate.execute("ALTER TABLE reportes_incidentes ALTER COLUMN sospechoso SET NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE reportes_incidentes ADD COLUMN IF NOT EXISTS juicio_tipo varchar(50)");
+            jdbcTemplate.execute("ALTER TABLE reportes_incidentes ADD COLUMN IF NOT EXISTS juicio_justificacion text");
+            jdbcTemplate.execute("ALTER TABLE reportes_incidentes ADD COLUMN IF NOT EXISTS evaluador varchar(50)");
+            jdbcTemplate.execute("ALTER TABLE reportes_incidentes ADD COLUMN IF NOT EXISTS fecha_evaluacion timestamp");
+
+            // Tabla: palabras_sospechosas
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS palabras_sospechosas (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "palabra VARCHAR(100) UNIQUE NOT NULL, " +
+                    "categoria VARCHAR(50) NOT NULL, " +
+                    "fecha_creado TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL" +
+                    ")");
+
             log.info("Base de datos saneada con éxito.");
         } catch (Exception e) {
             log.error("Error saneando la base de datos: {}", e.getMessage(), e);
